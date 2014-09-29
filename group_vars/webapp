@@ -1,0 +1,3 @@
+webapp_user: rtd
+webapp_home: /srv/{{ webapp_user }}
+webapp_env: '{{ webapp_home }}/env'

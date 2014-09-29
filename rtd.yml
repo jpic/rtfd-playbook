@@ -1,0 +1,63 @@
+---
+- hosts: webapp
+  sudo: true
+  tasks:
+  - name: add hostname to /etc/hosts
+    lineinfile: 
+      dest: /etc/hosts 
+      state: present 
+      regexp: '{{ ansible_hostname }}'
+      line: 127.0.0.1 {{ ansible_hostname }}
+
+  - name: create rtd user
+    user: name={{ webapp_user }} shell=/bin/bash home={{ webapp_home }}
+
+  - name: secure home
+    file: path={{ webapp_home }} mode=0700
+
+  - name: install packages
+    action: apt pkg={{ item }} state=installed update_cache=yes
+    with_items:
+      - git
+      - python-dev
+      - libxml2-dev
+      - libxslt1-dev
+      - texlive
+      - redis-server
+      - texlive-latex-extra
+      - gettext
+
+- hosts: webapp
+  sudo: true
+  sudo_user: '{{ webapp_user }}'
+  tasks:
+  - name: install python modules
+    action: pip name={{ item }} virtualenv={{ webapp_env }}
+    with_items:
+      - pip>=1.5
+
+  - name: checkout sources
+    git: 
+      repo: https://github.com/rtfd/readthedocs.org.git 
+      dest: '{{ webapp_env }}/src/rtd'
+
+  - name: install dependencies
+    action: pip requirements={{ webapp_env }}/src/rtd/pip_requirements.txt virtualenv={{ webapp_env }}
+
+  - name: syncdb
+    action: manage action=syncdb env={{ webapp_env }}
+
+  - name: migrate
+    action: manage action=migrate env={{ webapp_env }}
+
+  - name: upload initial data
+    copy:
+      src: files/initial_data.json
+      dest: '/tmp/initial_data.json'
+    tags:
+      - django
+
+  - name: load initial data
+    action: manage action='loaddata /tmp/initial_data.json' env={{ webapp_env }}
+    tags:
+      - django

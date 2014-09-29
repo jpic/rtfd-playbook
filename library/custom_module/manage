@@ -1,0 +1,22 @@
+#!/bin/bash
+UNATTEND=(syncdb migrate)
+
+# we are getting username value from ansible playbook parameter
+
+source ${1}
+
+source $env/bin/activate
+cd $env/src/rtd/
+
+if [[ $action -eq syncdb ]] || [[ $action -eq migrate ]]; then
+    noinput="--noinput"
+fi
+
+./manage.py $action $noinput
+
+if [[ $? -eq 0 ]]; then
+    echo "changed=True msg=OK"
+else
+    echo "failed=True msg=FAIL"
+fi
+
